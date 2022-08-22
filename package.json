@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/tysongf/webserver#readme",
   "dependencies": {
+    "json-stream": "^1.0.0",
     "nodemon": "^2.0.19"
   }
 }
