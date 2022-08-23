@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 const HTTP_PORT = 80;
+
+//any resources not listed here will be inaccessible
 const valid_resources = [
    'planets',
    'exoplanets'
