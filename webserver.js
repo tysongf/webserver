@@ -1,50 +1,90 @@
-const http = require('http');
 
-const HTTP_PORT = 3000;
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+
+const HTTP_PORT = 80;
+const valid_resources = [
+   'planets',
+   'exoplanets'
+];
+
+async function fetchIndex(resource_name) {
+   return new Promise((resolve, reject) => {
+      var file_path = path.resolve(__dirname, './data');
+      file_path += `/${resource_name}.json`;
+      if(!valid_resources.includes(resource_name)) {
+         reject({ statusCode: 404, message: 'Invalid resource.'});
+      } else {
+         fs.readFile(file_path, 'utf8', (err, data) => {
+            resolve(data);
+         });
+      }
+   });
+}
+
+async function fetchItem(resource_name, item_id) {
+   return new Promise((resolve, reject) => {
+      if(!valid_resources.includes(resource_name)) {
+         reject({ statusCode: 404, message: 'Invalid resource type'});
+      } else {
+         fetchIndex(resource_name)
+         .then((data) => {
+            const item_found = JSON.parse(data).find(item => item.id == item_id);
+            if(item_found) resolve(item_found)
+            else reject({
+               statusCode: 404,
+               message: `${resource_name} ${item_id} not found.`
+            });
+         })
+         .catch(() => {
+            reject({
+               statusCode: 500,
+               message: 'Error fetching data.'
+            });
+         })
+      };
+   })
+}
 
 const server = http.createServer((req, res) => {
 
-   res.writeHead(200, { content: 'application/json' });
-   let json_response = { 'message': 'Resource not found.' };
-
-   switch(req.url) {
-      case '/planets':
-         json_response = {
-            planets: [
-               { id: 1, name: 'Mercury' },
-               { id: 2, name: 'Venus' },
-               { id: 3, name: 'Earth' },
-               { id: 4, name: 'Mars' },
-               { id: 5, name: 'Jupiter' },
-               { id: 6, name: 'Saturn' },
-               { id: 7, name: 'Uranus' },
-               { id: 8, name: 'Neptune' }
-            ]
-         };
-      break;
-      case '/exoplanets':
-         json_response = {
-            planets: [
-               { id: 1, name: 'Kepler-22b' },
-               { id: 2, name: 'Kepler-442b' },
-               { id: 3, name: 'Kepler-1652b' },
-               { id: 4, name: 'Kepler-1410b' },
-               { id: 5, name: 'Kepler-296f' },
-               { id: 6, name: 'Kepler-296e' },
-               { id: 7, name: 'Kepler-1649b' },
-               { id: 8, name: 'Kepler-62f' }
-            ]
-         }
-      break;
-      default:
-         res.statusCode = 404;
-   }
-
-   res.end(JSON.stringify(json_response));
-
+   const url_part = req.url.split('/');
    
+   if(url_part.length === 2) {
+      //requesting resource index
+      fetchIndex(url_part[1])
+         .then((data) => {
+            res.end(data);
+         })
+         .catch((error) => {
+            res.writeHead(error.statusCode, { content: 'text/html' });
+            res.end(error.message);
+         });
+   }
+   else if(url_part.length === 3) {
+      //requesting a specific resource
+      fetchItem(url_part[1], url_part[2])
+         .then((data) => {
+            if(data) {
+               res.writeHead(200, { content: 'application/json' });
+               res.end(JSON.stringify(data));
+            } else {
+               res.statusCode = 404;
+               res.end();
+            }
+         })
+         .catch((error) => {
+            res.writeHead(error.statusCode, { content: 'text/html' });
+            res.end(error.message);
+         });
+   }
+   else {
+      res.statusCode = 400;
+      res.end({ 'message': 'Bad request. Use {resource_name}/{id} format.' });
+   }
 });
 
 server.listen(HTTP_PORT, () => {
-   console.log(`Listening on port ${HTTP_PORT}`);
+   console.log(`Listening for http requests on port ${HTTP_PORT}`);
 });
