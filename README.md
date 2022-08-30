@@ -1,5 +1,6 @@
 # webserver
-A basic web server built in node.
+A super simple web server built in node.
+Used to serve JSON data from files.
 
 Installation and usage:
 0. Run 'npm install' in the root project folder
